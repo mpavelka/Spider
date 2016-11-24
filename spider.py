@@ -11,8 +11,10 @@ class Spider:
     domain_name = ''
     queue_file = ''
     crawled_file = ''
+    broken_file=''
     queue = set()
     crawled = set()
+    broken = set()
 
     def __init__(self, project_name, base_url, domain_name):
         Spider.project_name = project_name
@@ -20,6 +22,7 @@ class Spider:
         Spider.domain_name = domain_name
         Spider.queue_file = Spider.project_name + '/queue.txt'
         Spider.crawled_file = Spider.project_name + '/crawled.txt'
+        Spider.broken_file = Spider.project_name + '/broken.txt'
         self.boot()
         self.crawl_page('First spider', Spider.base_url)
 
@@ -30,6 +33,7 @@ class Spider:
         create_data_files(Spider.project_name, Spider.base_url)
         Spider.queue = file_to_set(Spider.queue_file)
         Spider.crawled = file_to_set(Spider.crawled_file)
+        Spider.broken = file_to_set(Spider.broken_file)
 
     # Updates user display, fills queue and updates files
     @staticmethod
@@ -48,6 +52,9 @@ class Spider:
         html_string = ''
         try:
             response = urlopen(page_url)
+            code = response.getcode()
+            if code > 400:
+                Spider.broken.add(page_url)
             if 'text/html' in response.getheader('Content-Type'):
                 html_bytes = response.read()
                 html_string = html_bytes.decode("utf-8")
@@ -55,6 +62,7 @@ class Spider:
             finder.feed(html_string)
         except Exception as e:
             print(str(e))
+            Spider.broken.add(page_url)
             return set()
         return finder.page_links()
 
@@ -72,3 +80,4 @@ class Spider:
     def update_files():
         set_to_file(Spider.queue, Spider.queue_file)
         set_to_file(Spider.crawled, Spider.crawled_file)
+        set_to_file(Spider.broken, Spider.broken_file)
